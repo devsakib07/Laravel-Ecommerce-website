@@ -12,6 +12,7 @@ export const FloatingQuickCart: React.FC<FloatingQuickCartProps> = ({ onOpenCart
   const [cartTotal, setCartTotal] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [cartBump, setCartBump] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => storage.isAdminLoggedIn());
 
   const syncCart = () => {
     const cart = storage.getCart();
@@ -30,8 +31,13 @@ export const FloatingQuickCart: React.FC<FloatingQuickCartProps> = ({ onOpenCart
       bumpTimer = setTimeout(() => setCartBump(false), 500);
     };
 
+    const handleAuthChange = () => {
+      setIsAdminLoggedIn(storage.isAdminLoggedIn());
+    };
+
     window.addEventListener('cart-updated', syncCart);
     window.addEventListener('cart-bump', handleBump);
+    window.addEventListener('admin-auth-changed', handleAuthChange);
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 300);
     };
@@ -40,6 +46,7 @@ export const FloatingQuickCart: React.FC<FloatingQuickCartProps> = ({ onOpenCart
       clearTimeout(bumpTimer);
       window.removeEventListener('cart-updated', syncCart);
       window.removeEventListener('cart-bump', handleBump);
+      window.removeEventListener('admin-auth-changed', handleAuthChange);
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
@@ -50,8 +57,8 @@ export const FloatingQuickCart: React.FC<FloatingQuickCartProps> = ({ onOpenCart
 
   return (
     <>
-      {/* 0. Floating Admin Dashboard Button on Right Edge */}
-      {onNavigateAdmin && (
+      {/* 0. Floating Admin Dashboard Button on Right Edge (Only visible when authenticated) */}
+      {onNavigateAdmin && isAdminLoggedIn && (
         <button
           onClick={onNavigateAdmin}
           className="fixed right-0 top-[38%] -translate-y-1/2 z-40 bg-slate-900 hover:bg-emerald-900 text-white pl-3 pr-2.5 py-2 rounded-l-xl shadow-2xl flex items-center gap-1.5 transition-all duration-300 hover:-translate-x-1 cursor-pointer border-l-2 border-y-2 border-emerald-500/50 select-none group"
@@ -96,8 +103,8 @@ export const FloatingQuickCart: React.FC<FloatingQuickCartProps> = ({ onOpenCart
 
       {/* 2. Floating Bottom Right Buttons matching screenshot */}
       <div className="fixed right-4 bottom-5 z-40 flex flex-col gap-2.5 items-center">
-        {/* Quick Admin Dashboard entry */}
-        {onNavigateAdmin && (
+        {/* Quick Admin Dashboard entry (Only when authenticated) */}
+        {onNavigateAdmin && isAdminLoggedIn && (
           <button
             onClick={onNavigateAdmin}
             title="Admin Dashboard (এডমিন প্যানেলে প্রবেশ)"

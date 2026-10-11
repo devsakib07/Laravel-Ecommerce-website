@@ -89,9 +89,19 @@ export default function App() {
     };
     window.addEventListener('admin-auth-changed', handleAdminAuth);
 
+    // Secret Admin shortcut: Ctrl+Shift+A or Cmd+Shift+A
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setCurrentRoute('admin');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       window.removeEventListener('popstate', checkRouteFromUrl);
       window.removeEventListener('admin-auth-changed', handleAdminAuth);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 

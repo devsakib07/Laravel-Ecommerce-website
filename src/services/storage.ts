@@ -1,5 +1,6 @@
 import { Product, Category, Brand, CartItem, Order, Coupon, Review, Banner, Testimonial, SiteSettings, OrderStatus, TrackingEventLog, VisitorSession, VisitorPageStep, TrafficStats, AbandonedCart } from '../types/ecommerce';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_BRANDS, INITIAL_COUPONS, INITIAL_BANNERS, INITIAL_TESTIMONIALS, INITIAL_SETTINGS } from '../data/initialData';
+import { updateSessionActivity, isSessionExpired, sanitizeHtml, sanitizePlainText } from '../utils/security';
 
 const KEYS = {
   PRODUCTS: 'shuddho_products_v1',
@@ -93,13 +94,20 @@ export interface AdminCredentials {
   userId: string;
   password: string;
   name?: string;
+  securityPin?: string;
+  twoFactorEnabled?: boolean;
+  autoLogoutMinutes?: number;
   lastLogin?: string;
+  lastLoginIp?: string;
 }
 
 const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {
   userId: 'admin',
   password: 'sakibweb07$',
   name: 'Store Super Admin',
+  securityPin: '786012',
+  twoFactorEnabled: false,
+  autoLogoutMinutes: 30,
 };
 
 // Seed sample orders for realistic demo analytics and order tracking
@@ -1266,14 +1274,14 @@ class StorageService {
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
       order_number: orderNumber,
-      customer_name: orderData.customer_name,
-      customer_email: orderData.customer_email,
-      customer_phone: orderData.customer_phone,
-      division: orderData.division,
-      district: orderData.district,
-      upazila: orderData.upazila,
-      full_address: orderData.full_address,
-      notes: orderData.notes,
+      customer_name: sanitizePlainText(orderData.customer_name),
+      customer_email: sanitizePlainText(orderData.customer_email),
+      customer_phone: sanitizePlainText(orderData.customer_phone),
+      division: sanitizePlainText(orderData.division),
+      district: sanitizePlainText(orderData.district),
+      upazila: sanitizePlainText(orderData.upazila),
+      full_address: sanitizePlainText(orderData.full_address),
+      notes: orderData.notes ? sanitizeHtml(orderData.notes) : undefined,
       items: orderData.items.map(item => ({
         product_id: item.product_id,
         product_name: item.product.name,
@@ -1404,6 +1412,8 @@ class StorageService {
     const reviews = this.getItem<Review[]>(KEYS.REVIEWS, []);
     const newRev: Review = {
       ...review,
+      customer_name: sanitizePlainText(review.customer_name),
+      comment: sanitizeHtml(review.comment),
       id: `rev-${Date.now()}`,
       is_approved: true, // auto-approve verified customer reviews
       created_at: new Date().toISOString().slice(0, 10),
@@ -1448,7 +1458,17 @@ class StorageService {
   }
 
   public isAdminLoggedIn(): boolean {
-    return Boolean(this.getItem<{ userId: string; token: string } | null>(KEYS.ADMIN_SESSION, null));
+    const session = this.getItem<{ userId: string; token: string; loginAt?: number } | null>(KEYS.ADMIN_SESSION, null);
+    if (!session) return false;
+
+    const creds = this.getAdminCredentials();
+    const timeout = creds.autoLogoutMinutes || 30;
+    if (isSessionExpired(timeout)) {
+      this.adminLogout();
+      return false;
+    }
+    updateSessionActivity();
+    return true;
   }
 
   public getAdminSession(): { userId: string; name: string } | null {
@@ -1457,10 +1477,16 @@ class StorageService {
 
   public setAdminLoggedIn(sessionData: { userId: string; name: string } | null): void {
     if (sessionData) {
-      this.setItem(KEYS.ADMIN_SESSION, { ...sessionData, token: `adm-${Date.now()}` });
+      updateSessionActivity();
+      this.setItem(KEYS.ADMIN_SESSION, {
+        ...sessionData,
+        token: `adm-sec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        loginAt: Date.now(),
+      });
       window.dispatchEvent(new CustomEvent('admin-auth-changed', { detail: { isLoggedIn: true } }));
     } else {
       localStorage.removeItem(KEYS.ADMIN_SESSION);
+      sessionStorage.removeItem('shuddho_sec_last_activity');
       window.dispatchEvent(new CustomEvent('admin-auth-changed', { detail: { isLoggedIn: false } }));
     }
   }
