@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      // Ensure window.fetch has both a getter and a setter so scripts trying to patch or assign fetch do not fail with "Cannot set property fetch of #<Window> which has only a getter"
+      (function() {
+        try {
+          var _rawFetch = window.fetch;
+          var _fetchHandler = typeof _rawFetch === 'function' ? function() {
+            return _rawFetch.apply(window, arguments);
+          } : undefined;
+
+          function safePatch(target) {
+            if (!target) return;
+            try {
+              var desc = Object.getOwnPropertyDescriptor(target, 'fetch');
+              if (!desc || desc.configurable) {
+                Object.defineProperty(target, 'fetch', {
+                  get: function() {
+                    return _fetchHandler;
+                  },
+                  set: function(newHandler) {
+                    _fetchHandler = newHandler;
+                  },
+                  configurable: true,
+                  enumerable: true
+                });
+              }
+            } catch (err) {}
+          }
+
+          safePatch(window);
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            safePatch(Window.prototype);
+          }
+
+          // Safety error listener to intercept unhandled "Cannot set property fetch" errors
+          window.addEventListener('error', function(event) {
+            if (event && event.message && event.message.indexOf('fetch') !== -1 && event.message.indexOf('getter') !== -1) {
+              if (event.preventDefault) event.preventDefault();
+              if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+              return true;
+            }
+          }, true);
+        } catch (e) {
+          // If already defined or protected, continue safely
+        }
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shuddho Bazar - Pure & Organic Natural Grocery</title>
+    <meta name="description" content="Premium Bangladesh-based organic food and natural grocery eCommerce platform featuring pure honey, mustard oil, ghee, dates, spices, and grains with real-time order tracking and admin management." />
+    <meta property="og:title" content="Shuddho Bazar - Pure & Organic Natural Grocery" />
+    <meta property="og:description" content="Premium Bangladesh-based organic food and natural grocery eCommerce platform featuring pure honey, mustard oil, ghee, dates, spices, and grains with real-time order tracking and admin management." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-[#F8F9FA] text-[#22292F] antialiased selection:bg-[#E25C1D] selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

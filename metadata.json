@@ -1,0 +1,6 @@
+{
+  "name": "Shuddho Bazar - Pure & Organic Natural Grocery",
+  "description": "Premium Bangladesh-based organic food and natural grocery eCommerce platform featuring pure honey, mustard oil, ghee, dates, spices, and grains with real-time order tracking and admin management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
